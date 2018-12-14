@@ -1,0 +1,408 @@
+1) TO LIST DATABASES:
+
+sqoop list-databases \
+  --connect "jdbc:mysql://sandbox-hdp.hortonworks.com" \
+  --username retail_dba \
+  --password hadoop
+
+2)TO LIST TABLES:
+
+sqoop list-tables \
+  --connect "jdbc:mysql://sandbox-hdp.hortonworks.com/retail_db" \
+  --username retail_dba \
+  --password hadoop
+
+3) TO FIRE ANY QUERY:
+
+sqoop eval \
+  --connect "jdbc:mysql://sandbox-hdp.hortonworks.com/retail_db" \
+  --username retail_dba \
+  --password hadoop   \
+  --query "select * from products"
+
+4)TO IMPORT A SINGLE TABLE INTO HDFS
+
+sqoop import \
+--connect "jdbc:mysql://sandbox-hdp.hortonworks.com/retail_db" \
+--username retail_dba \
+--password hadoop \
+--table departments \
+--target-dir /user/tarab/
+
+4) TO IMPORT ALL TABLES INTO HDFS
+
+sqoop import-all-tables \
+-m 12 \
+--connect "jdbc:mysql://sandbox-hdp.hortonworks.com/retail_db"  \
+--username retail_dba \
+--password hadoop \
+--warehouse-dir /user/tarab/import_all
+
+
+5) TO IMPORT A TABLE INTO HDFS AS A TEXTFILE
+
+sqoop import \
+-m 12 \
+--connect "jdbc:mysql://sandbox-hdp.hortonworks.com/retail_db" \
+--username retail_dba \
+--password hadoop \
+--table departments \
+--as-textfile \
+--target-dir /user/tarab/sqoop_merge/departments_textfile
+
+
+6) TO IMPORT A TABLE INTO HDFS AS SEQUENCEFILE
+
+sqoop import \
+-m 12 \
+--connect "jdbc:mysql://sandbox-hdp.hortonworks.com/retail_db" \
+--username retail_dba \
+--password hadoop \
+--table departments \
+--as-sequencefile \
+--target-dir /user/tarab/departments_sequencefile
+
+7) TO IMPORT A TABLE AS AVRODATAFILE INTO HDFS
+
+sqoop import \
+-m 12 \
+--connect "jdbc:mysql://sandbox-hdp.hortonworks.com/retail_db" \
+--username retail_dba \
+--password hadoop \
+--table departments \
+--as-avrodatafile \
+--target-dir /user/tarab/departments_avrofile
+
+
+8) TO VIEW THE WORDCOUNT OF THE ALL THE FILES UNDER A DIRECTORY
+
+ hadoop fs -cat /user/tarab/sqoop_import/products/part-m-*|wc -L
+
+9) TO VIEW FEW RECORDS OF A FILE 
+
+hadoop fs -tail /user/tarab/sqoop_import/products/part-m-00000
+
+10) TO IMPORT TABLES TABLES INTO HIVE USING SNAPPY CODEC AND COMPRESSION
+
+sqoop import-all-tables \
+  --num-mappers 1 \
+  --connect "jdbc:mysql://sandbox-hdp.hortonworks.com/retail_db" \
+  --username retail_dba \
+  --password hadoop \
+  --hive-import \
+  --hive-overwrite \
+  --create-hive-table \
+  --compress \
+  --compression-codec org.apache.hadoop.io.compress.SnappyCodec \
+
+To check size of orders table in HDFS - 2.9 MB
+
+hadoop fs -du -s -h /user/tarab/sqoop_import/orders
+
+To check size of orders table in HIVE - 858.1 KB
+
+hadoop fs -du -s -h /apps/hive/warehouse/orders
+
+
+11) TO IMPORT ALL TABLES FROM MYSQL INTO HIVE IN A PARTICULAR DATABASE
+
+sqoop import-all-tables \
+  --num-mappers 1 \
+  --connect "jdbc:mysql://sandbox-hdp.hortonworks.com/retail_db" \
+  --username retail_dba \
+  --password hadoop \
+  --hive-import \
+  --hive-overwrite \
+  --create-hive-table \
+  --hive-database sqoop_import
+
+
+12) TO IMPORT SELECTED DATA FROM MYSQL INTO HDFS
+
+sqoop import \
+--connect "jdbc:mysql://sandbox-hdp.hortonworks.com/retail_db" \
+--username retail_dba \
+--password hadoop \
+--table departments \
+--target-dir /user/tarab/departments \
+-m 2 \
+--boundary-query "select 2,8 from departments"
+
+13) TO INSERT DATA INTO MYSQL TABLE THROUGH SQOOP
+
+
+sqoop eval \
+  --connect "jdbc:mysql://sandbox-hdp.hortonworks.com/retail_db" \
+  --username retail_dba \
+  --password hadoop   \
+  --query "insert into departments value (8000, 'TESTING')"
+
+14) TO IMPORT SPECIFIC COLUMNS FROM MYSQL TO HDFS 
+
+
+sqoop import \
+--connect "jdbc:mysql://sandbox-hdp.hortonworks.com/retail_db" \
+--username retail_dba \
+--password hadoop \
+--table departments \
+--target-dir /user/tarab/departments \
+-m 2 \
+--boundary-query "select 2,8 from departments" \
+--columns department_name
+
+
+15) TO IMPORT CONDITIONAL DATA USING --QUERY
+
+sqoop import \
+  --connect "jdbc:mysql://sandbox-hdp.hortonworks.com/retail_db" \
+  --username=retail_dba \
+  --password=hadoop \
+  --query="select * from orders join order_items on orders.order_id = order_items.order_item_order_id where \$CONDITIONS" \
+  --target-dir /user/tarab/order_join \
+  --split-by order_id \
+  --num-mappers 4
+
+16) TO IMPORT CONDITIONAL DATA USING --WHERE 
+
+sqoop import \
+--connect "jdbc:mysql://sandbox-hdp.hortonworks.com/retail_db" \
+--username retail_dba \
+--password hadoop \
+--table departments \
+--target-dir /user/tarab/departments_lesser_than_7 \
+--where "department_id < 7"
+
+
+17) TO IMPORT MYSQL TABLE INTO AN EXISTING HIVE TABLE
+
+sqoop import \
+--connect "jdbc:mysql://sandbox-hdp.hortonworks.com/retail_db" \
+--username retail_dba \
+--password hadoop \
+--table departments \
+--hive-home /apps/hive/warehouse \
+--hive-import \
+--hive-overwrite \
+--hive-table sqoop_import.departments \
+--outdir java_files  
+
+
+18) TO IMPORT MYSQL TABLE INTO A NEW HIVE HIVE TABLE
+
+sqoop import \
+--connect "jdbc:mysql://sandbox-hdp.hortonworks.com/retail_db" \
+--username retail_dba \
+--password hadoop \
+--table departments \
+--hive-home /apps/hive/warehouse \
+--hive-import \
+--hive-table sqoop_import.departments_test \
+--create-hive-table \
+--outdir java_files                                                 
+
+
+19) TO IMPORT UPDATED DATA FROM MYSQL TABLE INTO AN EXISTING HDFS DIRECTORY
+
+sqoop import \
+--connect "jdbc:mysql://sandbox-hdp.hortonworks.com/retail_db" \
+--username retail_dba \
+--password hadoop \
+--table departments 
+--target-dir /user/tarab/departments \
+--append \
+--where "department_id > 7"
+
+
+
+20) TO IMPORT UPDATED DATA FROM MYSQL INTO HDFS USING INCREMENTAL LOAD
+
+sqoop import \
+--connect "jdbc:mysql://sandbox-hdp.hortonworks.com/retail_db" \
+--username retail_dba \
+--password hadoop \
+--table departments \ 
+--target-dir /user/tarab/departments \
+--append \
+--check-column department_id \
+--incremental append \
+--last-value 8                                                
+
+
+
+21) TO EXPORT DATA FROM HDFS TO A TABLE IN MYSQL 
+
+sqoop export \
+--connect "jdbc:mysql://sandbox-hdp.hortonworks.com/retail_db" \
+--username retail_dba \
+--password hadoop \
+--table order_items_export \
+--export-dir /user/tarab/sqoop_import_all/order_items \
+--batch \
+--outdir java_files                     
+
+
+22) TO UPDATE DATA FROM A HDFS FILE TO A MYSQL TABLE
+
+sqoop export \
+--connect "jdbc:mysql://sandbox-hdp.hortonworks.com/retail_db" \
+  --username retail_dba \
+  --password hadoop \
+  --table departments \
+  --export-dir /user/tarab/sqoop_import_all/departments_export \
+  --batch \
+  --outdir java_files \
+  -m 1 \
+  --update-key department_id \
+  --update-mode allowinsert
+
+
+23) TO UPDATE existing DATA FROM A HDFS FILE TO A MYSQL TABLE without --update-mode allowinsert COMMAND
+
+sqoop export \
+--connect "jdbc:mysql://sandbox-hdp.hortonworks.com/retail_db" \
+  --username retail_dba \
+  --password hadoop \
+  --table departments \
+  --export-dir /user/tarab/sqoop_import_all/departments_export \
+  --batch \
+  --outdir java_files \
+  -m 1 \
+  --update-key department_id \
+
+
+24) TO IMPORT DATA FROM MYSQL INTO HDFS WITH VALUES IN "
+
+sqoop import \
+--connect "jdbc:mysql://sandbox-hdp.hortonworks.com/retail_db"  \
+--username retail_dba  \
+--password hadoop  \
+--table departments \
+--target-dir /user/tarab/sqoop_import_all/departments_enclosedbynew \
+--enclosed-by \" 
+
+
+25) TO IMPORT DATA FROM MYSQL INTO HDFS WITH VALUES IN ",FIELDS TERMINATED BY |,LINES TERMINATED BY :
+
+sqoop import \
+--connect "jdbc:mysql://sandbox-hdp.hortonworks.com/retail_db"  \
+--username retail_dba  \
+--password hadoop  \
+--table departments \
+--target-dir /user/tarab/sqoop_import_all/departments_enclosedbynew \
+--enclosed-by \" \
+--fields-terminated-by \| \
+--lines-terminated-by \:
+
+
+26) TO IMPORT DATA FROM MYSQL INTO HIVE TABLE WITHOUT NULL VALUES
+
+THIS WILL REPLACE -1 FOR INTEGER COLUMN AS ITS DATATYPE IS NOT STRING AND
+WILL REPLACE nvl FOR STRING COLUMN WHERE DATATYPE IS STRING
+
+sqoop import \
+--connect "jdbc:mysql://sandbox-hdp.hortonworks.com/retail_db" \
+--username retail_dba \
+--password hadoop \
+--table departments_test \
+--hive-home /apps/hive/warehouse \
+--hive-import \
+--hive-table sqoop_import.departments_test \
+--outdir java_files \
+-m 1 \
+--null-string nvl \
+--null-non-string -1
+
+
+27) TO IMPORT DATA FROM MYSQL INTO HIVE WITH PIPE DELIMETERS IN THE HDFS DIRECTORY
+
+sqoop import \
+--connect "jdbc:mysql://sandbox-hdp.hortonworks.com/retail_db" \
+--username retail_dba \
+--password hadoop \
+--table departments \
+--fields-terminated-by '|' \
+--hive-home /apps/hive/warehouse \
+--hive-import \
+--hive-table sqoop_import.departments_fields_terminated \
+--create-hive-table \
+--outdir java_files
+
+
+28) TO EXPORT DATA FROM HDFS TO A MYSQL TABLE
+
+sqoop export --connect "jdbc:mysql://sandbox-hdp.hortonworks.com/retail_db" \
+  --username retail_dba \
+  --password hadoop \
+  --table departments_test \
+  --export-dir /apps/hive/warehouse/sqoop_import.db/departments_test \
+  --input-fields-terminated-by '\001' \
+  --input-lines-terminated-by '\n' \
+  --num-mappers 2 \
+  --batch \
+  --outdir java_files \
+  --input-null-string nvl \
+  --input-null-non-string -1
+
+
+
+
+
+29) SQOOP MERGE
+
+hadoop fs -mkdir /user/tarab/sqoop_merge
+
+sqoop import  --connect "jdbc:mysql://sandbox-hdp.hortonw
+orks.com/retail_db" --username retail_dba --password hadoop --table departments
+  --as-textfile  --target-dir /user/tarab/sqoop_merge/departments_textfile
+
+sqoop eval --connect "jdbc:mysql://sandbox-hdp.hortonwork
+s.com/retail_db" --username retail_dba --password hadoop --query "update depart
+ments set department_name='Testing Merge' where department_id = 9000"
+
+sqoop eval --connect "jdbc:mysql://sandbox-hdp.hortonwork
+s.com/retail_db"  --username retail_dba  --password hadoop  --query "insert int
+o departments values (50000, 'Inserting for merge')"                           
+
+sqoop eval --connect "jdbc:mysql://sandbox-hdp.hortonwork
+s.com/retail_db"  --username retail_dba  --password hadoop  --query "select * f
+rom departments"                                                               
+
+sqoop import --connect "jdbc:mysql://sandbox-hdp.hortonwo
+rks.com/retail_db"  --username=retail_dba  --password=hadoop  --table departmen
+ts  --as-textfile  --target-dir=/user/tarab/sqoop_merge/departments_delta  --wh
+ere "department_id >= 9000"
+
+hadoop fs -cat /user/tarab/sqoop_merge/departments_delta/part*    
+
+hadoop fs -cat /user/tarab/sqoop_merge/*/part*
+
+NOW MERGE THESE TWO TOGETHER       
+
+sqoop merge --merge-key department_id  \
+--new-data /user/tarab/sqoop_merge/departments_delta  \
+--onto /user/tarab/sqoop_merge/departments_textfile  \
+--target-dir /user/tarab/sqoop_merge/departments_stage  \
+--class-name departments  \
+--jar-file /tmp/sqoop-root/compile/f0abe0320bbcc326d6e033c9887735f2/departments.jar                                                               
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
