@@ -1,0 +1,233 @@
+1) WORD COUNT PROGRAM ON A FILE IN HDFS
+
+lines = LOAD '/user/tarab/pig_demo.txt' AS (line:chararray);
+words = FOREACH lines GENERATE FLATTEN(TOKENIZE(line)) as word;
+grouped = GROUP words BY word;
+wordcount = FOREACH grouped GENERATE group, COUNT(words);
+DUMP wordcount;
+
+2) Load data into a Pig relation without a schema
+
+departments = LOAD '/user/root/sqoop_import_all/departments' USING PigStorage(',');
+DESCRIBE departments;
+
+department_id = FOREACH departments GENERATE $1;
+DESCRIBE department_id;
+
+3) Cast elements in department_id to integer
+
+department_id = FOREACH departments GENERATE (int) $1;
+DESCRIBE department_id;
+
+DUMP department_id;
+
+4) Load data into a Pig relation with a schema
+
+departments = LOAD '/user/root/sqoop_import_all/departments' USING PigStorage(',') AS (department_id:int, department_name:chararray);
+DESCRIBE departments;
+department_id = FOREACH departments GENERATE department_id;
+DESCRIBE department_id;
+DUMP department_id;
+
+5) Load data from a hive table into pig relation
+
+departments = LOAD 'sqoop_import.departments' USING org.apache.hive.hcatalog.pig.HCatLoader();
+dump departments;
+
+
+6) To get count of a hive table into a pig relation
+
+departments = LOAD 'sqoop_import.departments' USING org.apache.hive.hcatalog.pig.HCatLoader();
+departments_grouped = GROUP departments ALL;
+departments_count = FOREACH departments GENERATE COUNT_STAR(departments);
+dump departments_count;
+
+
+7) Load data from a Hive table into a Pig relation
+
+-- Launch grunt using "pig -useHCatalog"
+dept = LOAD 'tarab.departments' USING org.apache.hive.hcatalog.pig.HCatLoader();
+DESCRIBE dept;
+dept_name = FOREACH dept GENERATE department_name;
+DUMP dept_name;
+
+8) Use Pig to remove records with null values from a relation
+
+departments__wo_schema = LOAD '/apps/hive/warehouse/tarab.db/departments' USING PigStorage('|');
+dept_id_not_null = FILTER department_id BY ($5 is not null);
+DUMP dept_id_not_null;
+
+9) Transform data to match a given Hive schema
+
+departments = LOAD 'tarab.departments' USING org.apache.hive.hcatalog.pig.HCatLoader();
+dept_grouped = GROUP departments ALL;
+dept_count = FOREACH dept_grouped GENERATE COUNT_STAR(departments) AS cnt;
+DUMP dept_count;
+
+10) GROUP ALL by position (with out schema)
+
+departments = LOAD 'tarab.departments' USING org.apache.hive.hcatalog.pig.HCatLoader();
+dept_filtered = FILTER departments BY ($0 is not null);
+dept_grouped = GROUP dept_filtered ALL;
+dept_count = FOREACH dept_grouped GENERATE COUNT_STAR(departments) AS cnt;
+DUMP dept_count;
+
+11) GROUP BY (select order_status, count(1) from orders group by order_status)
+
+orders = LOAD 'pig_demo.orders' USING org.apache.hive.hcatalog.pig.HCatLoader();
+ordersgrouped = GROUP orders BY order_status;
+DESCRIBE ordersgrouped
+orderscount = FOREACH ordersgrouped GENERATE group, COUNT(orders) AS cnt;
+DUMP orderscount;
+
+12) Store the data from a Pig relation into a folder in HDFS
+
+-- Launch grunt using "pig"
+-- Validate, by running "fs -ls /user/root/sqoop_import"
+departments = LOAD '/user/root/sqoop_import/departments';
+STORE departments INTO '/user/root/pig_demo/departments';
+-- Validate "fs -cat /user/root/pig_demo/departments/part*"
+
+13) Changing the delimiter
+
+-- Delete target directory if exists "fs -rm -R /user/root/pig_demo/departments"
+departments = LOAD '/user/root/sqoop_import/departments' USING PigStorage(',');
+STORE departments INTO '/user/root/pig_demo/departments' USING PigStorage('|');
+
+14) Changing file type (from text to binary)
+
+departments = LOAD '/user/root/sqoop_import/departments' USING PigStorage(',');
+STORE departments INTO '/user/root/pig_demo/departments' USING BinStorage('|');
+-- Validate
+departments_bin = LOAD '/user/root/pig_demo/departments' USING BinStorage('|');
+DUMP departments_bin;
+
+15) Store the data from a Pig relation into a Hive table
+
+-- Launch hive using "hive"
+-- Create Hive database
+
+create database pig_demo;
+
+use pig_demo;
+
+create table departments (department_id int, department_name string);
+
+create table categories (category_id int, category_department_id int, category_name string);
+
+-- Loading into hive tables
+-- Launch pig using "pig -useHCatalog"
+-- Loading data into hive tables
+
+departments = LOAD '/user/root/sqoop_import/departments' USING PigStorage(',') AS (department_id: int, department_name: chararray);
+STORE departments INTO 'pig_demo.departments' USING org.apache.hive.hcatalog.pig.HCatStorer();
+
+categories = LOAD '/user/root/sqoop_import/categories' USING PigStorage(',') AS (categor_id: int, category_department_id: int, category_name: chararray);
+STORE categories INTO 'pig_demo.categories' USING org.apache.hive.hcatalog.pig.HCatStorer();
+
+16) Sort the output of a Pig relation
+
+-- select * from departments order by department_id;
+departments = LOAD 'pig_demo.departments' USING org.apache.hive.hcatalog.pig.HCatLoader();
+orderby = ORDER departments BY department_id;
+orderbydesc = ORDER departments BY department_id DESC;
+
+
+
+17) Remove the duplicate tuples of a Pig relation
+
+-- select distinct order_status from orders;
+orders = LOAD 'pig_demo.orders' USING org.apache.hive.hcatalog.pig.HCatLoader();
+orderstatus = FOREACH orders GENERATE order_status;
+grouped = GROUP orderstatus BY order_status;
+orderstatusdistinct = DISTINCT order_status;
+dump orderstatusdistinct;
+
+orders = LOAD 'pig_demo.orders' USING org.apache.hive.hcatalog.pig.HCatLoader();
+orderstatus = FOREACH orders GENERATE order_status;
+orderstatusdistinct = DISTINCT orderstatus;
+DUMP orderstatusdistinct;
+
+
+
+18) Specify the number of reduce tasks for a Pig MapReduce job
+
+orders = LOAD 'pig_demo.orders' USING org.apache.hive.hcatalog.pig.HCatLoader();
+ordersgrouped = GROUP orders BY order_status PARALLEL 2;
+DESCRIBE ordersgrouped
+orderscount = FOREACH ordersgrouped GENERATE group, COUNT(orders) AS cnt;
+DUMP orderscount;
+
+19) Join two datasets using Pig
+
+orders = LOAD 'pig_demo.orders' USING org.apache.hive.hcatalog.pig.HCatLoader();
+order_items = LOAD 'pig_demo.order_items' USING org.apache.hive.hcatalog.pig.HCatLoader();
+ordersjoin = JOIN orders BY order_id, order_items BY order_item_order_id;
+dump ordersjoin;
+
+20) Left Outer Join
+
+orders = LOAD 'pig_demo.orders' USING org.apache.hive.hcatalog.pig.HCatLoader();
+order_items = LOAD 'pig_demo.order_items' USING org.apache.hive.hcatalog.pig.HCatLoader();
+ordersleftjoin = JOIN orders BY order_id LEFT OUTER, order_items BY order_item_order_id;
+ordersfiltered = FILTER ordersleftjoin BY order_items::order_item_id IS NULL;
+DUMP ordersfiltered;
+
+21) Right Outer Join
+
+orders = LOAD 'pig_demo.orders' USING org.apache.hive.hcatalog.pig.HCatLoader();
+order_items = LOAD 'pig_demo.order_items' USING org.apache.hive.hcatalog.pig.HCatLoader();
+ordersrightjoin = JOIN orders BY order_id RIGHT OUTER, order_items BY order_item_order_id;
+ordersfiltered = FILTER ordersrightjoin BY orders::order_id IS NULL;
+DUMP ordersfiltered;
+
+22) Full Outer Join
+
+orders = LOAD 'pig_demo.orders' USING org.apache.hive.hcatalog.pig.HCatLoader();
+order_items = LOAD 'pig_demo.order_items' USING org.apache.hive.hcatalog.pig.HCatLoader();
+ordersfulljoin = JOIN orders BY order_id FULL OUTER, order_items BY order_item_order_id;
+ordersfiltered = FILTER ordersfulljoin BY order_items::order_item_id IS NULL;
+DUMP ordersfiltered;
+
+23) Replicated Join - To join a big and small table on the map side for performance enhancement
+
+orders = LOAD 'pig_demo.orders' USING org.apache.hive.hcatalog.pig.HCatLoader();
+order_items = LOAD 'pig_demo.order_items' USING org.apache.hive.hcatalog.pig.HCatLoader();
+ordersjoin = JOIN orders BY order_id, order_items BY order_item_order_id USING 'replicated';
+dump ordersjoin;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
