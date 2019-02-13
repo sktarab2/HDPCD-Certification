@@ -1,0 +1,182 @@
+1) Setting up an agent with source as netcat server,sink as logger and channel as memory.
+
+--mkdir /home/tarabshaikh/flume-demo.conf
+--vi flume-demo.conf
+
+a1.sources=r1
+a1.sinks=k1
+a1.channels=c1
+
+a1.sources.r1.type=netcat
+a1.sources.r1.bind=0.0.0.0
+a1.sources.r1.port=44444
+
+a1.sinks.k1.type=logger
+
+a1.channels.c1.type=memory
+a1.channels.c1.capacity=1000
+a1.channels.c1.transactionCapacity=100
+
+a1.sources.r1.channels=c1
+a1.sinks.k1.channel=c1
+
+--Running the agent with the below command:
+  flume-ng agent \
+--name a1 \
+--conf-file /home/tarabshaikh/flume-demo.conf
+--conf /etc/flume/conf
+
+2) Multi agent flow using Avro RPC (Remote procedure call)
+
+--vi first-agent.conf
+
+fa.sources=r1
+fa.sinks=k1
+fa.channels=c1
+
+fa.sources.r1.type=avro
+fa.sources.r1.bind=gw02.itversity.com
+fa.sources.r1.port=44444
+
+fa.sinks.k1.type=logger
+
+fa.channels.c1.type=memory
+fa.channels.c1.capacity=1000
+fa.channels.c1.transactionCapacity=100
+
+fa.sources.r1.channels=c1
+fa.sinks.k1.channel=c1
+
+--Source will be of type avro and the sink will be logger to show the logs on the screen
+--Source of first-agent.conf will be chained to the sink of second-agent.conf
+
+--vi second-agent.conf
+
+sa.sources=r1
+sa.sinks=k1
+sa.channels=c1
+
+sa.sources.r1.type=exec
+sa.sources.r1.command=tail -F /opt/gen_logs/logs/access.log
+
+sa.sinks.k1.type=avro
+sa.sinks.k1.hostname=gw02.itversity.com
+sa.sinks.k1.port=44444
+
+sa.channels.c1.type=memory
+sa.channels.c1.capacity=1000
+sa.channels.c1.transactionCapacity=100
+
+sa.sources.r1.channels=c1
+sa.sinks.k1.channel=c1
+
+--Source is of type exec to fetch logs from the access.log(network traffic logs simulator)
+--Sink is of type avro which will be connected to the source of first-agent.conf
+
+--Run first-agent.conf
+--Run second-agent.conf
+--Validate by doing telnet
+	telent gw02.itversity.com 44444
+--You will be able to listen to the server
+
+3) Getting log data into HDFS 
+
+--vi logstomulti.conf
+
+lm.sources=r1
+lm.sinks=k1
+lm.channels=c1
+
+lm.sources.r1.type=exec
+lm.sources.r1.command=tail -F /opt/gen_logs/logs/access.log
+
+lm.sinks.k1.type=hdfs
+lm.sinks.k1.hdfs.path=hdfs://nn01.itversity.com:8020/user/tarabshaikh/logstohdfs_%Y-%m-%d
+lm.sinks.k1.hdfs.filePrefix=retail
+lm.sinks.k1.hdfs.fileSuffix=.txt
+lm.sinks.k1.hdfs.fileType=DataStream
+lm.sinks.k1.hdfs.rollInterval=60
+lm.sinks.k1.hdfs.rollSize=0
+lm.sinks.k1.hdfs.rollCount=100
+lm.sinks.k1.hdfs.useLocalTimeStamp=true
+
+lm.channels.c1.type=memory
+lm.channels.c1.capacity=1000
+lm.channels.c1.transactionCapacity=100
+
+lm.sources.r1.channels=c1
+lm.sinks.k1.channel=c1
+
+--Source is of type exec fetching logs from access.log
+--Sink is of type HDFS where data needs to be stored into path /user/tarabshaikh/logstohdfs
+--hdfs.filePrefix is used to rename the files being saved in the target folder
+--hdfs.fileSuffix is used to put .txt as an extension in the file name
+--hdfs.fileType=DataStream is used to store file as textfile (Default is SequenceFile)
+--hdfs.rollInterval=60 is used to change the no. of seconds before the current file gets rolled out (Default is 30 seconds)
+--hdfs.rollSize=0 bytes is ued to change the file size to trigger the roll (Default is 1024) (If given 0 the property gets excluded)
+--hdfs.rollCount=100 is used to change the number of events being written to the file before it gets rolled out (Default is 10)
+--Escape sequences:
+  hdfs.useLocalTimeStamp=true is used to get the local timestamp and append it with the directory(Default is False)
+  hdfs.path=hdfs://nn01.itversity.com:8020/user/tarabshaikh/logstohdfs_%Y-%m-%d where %Y for YYYY,%m for mm,%d for dd
+
+--Run the agent by:
+  flume-ng agent \
+--name lm \
+--conf-file /home/tarabshaikh/flume-demo/logstomulti.conf
+--conf /etc/flume/conf
+
+4) Getting logs to Kafka (From one source to multiple channels and sinks)
+
+--vi logstomulti.conf
+
+lm.sources=r1
+lm.sinks=k1 k2
+lm.channels=c1 c2
+
+lm.sources.r1.type=exec
+lm.sources.r1.command=tail -F /opt/gen_logs/logs/access.log
+
+lm.sinks.k1.type=hdfs
+lm.sinks.k1.hdfs.path=hdfs://nn01.itversity.com:8020/user/tarabshaikh/logstohdfs_%Y-%m-%d
+lm.sinks.k1.hdfs.filePrefix=retail
+lm.sinks.k1.hdfs.fileSuffix=.txt
+lm.sinks.k1.hdfs.fileType=DataStream
+lm.sinks.k1.hdfs.rollInterval=60
+lm.sinks.k1.hdfs.rollSize=0
+lm.sinks.k1.hdfs.rollCount=100
+lm.sinks.k1.hdfs.useLocalTimeStamp=true
+
+lm.sinks.k2.type=org.apache.flume.sink.kafka.KafkaSink
+lm.sinks.k2.kafka.bootstrap.servers=wn01.itversity.com:6667,wn02.itversity.com:6667,wn03.itversity.com:6667
+lm.sinks.k2.kafka.topic=logstokafka
+
+lm.channels.c1.type=memory
+lm.channels.c1.capacity=1000
+lm.channels.c1.transactionCapacity=100
+
+lm.channels.c2.type=memory
+lm.channels.c2.capacity=1000
+lm.channels.c2.transactionCapacity=100
+
+lm.sources.r1.channels=c1 c2
+lm.sinks.k1.channel=c1
+lm.sinks.k2.channel=c2
+
+--Run the agent by:
+
+  flume-ng agent \
+--name lm \
+--conf-file /home/tarabshaikh/flume-demo/logstomulti.conf
+--conf /etc/flume/conf
+
+--Validate in HDFS by doing:
+  hadoop fs -ls /user/tarabshaikh/logstohdfs_2019-02-05
+
+--Validate in Kafka by running the:
+  /usr/hdp/2.6.5.0-292/kafka/bin/kafka-console-consumer.sh \
+> --bootstrap-server wn01.itversity.com:6667,wn02.itversity.com:6667,wn03.itversity.com:6667 \
+> --topic logstokafka
+  You will see the logs flowing in the console
+
+
+
