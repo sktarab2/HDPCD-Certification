@@ -1,0 +1,42 @@
+1) To craete a topic
+
+kafka-topics.sh --create \
+--zookeeper nn01.itversity.com:2181,nn02.itversity.com:2181,rm01.itversity.com \
+--replication-factor 1 \
+--partitions 1 \
+--topic tarab
+
+2) To list all the topics
+
+kafka-topics.sh --list \
+--zookeeper nn01.itversity.com:2181,nn02.itversity.com:2181,rm01.itversity.com \
+
+3) To list one topic
+
+kafka-topics.sh --list \
+--zookeeper nn01.itversity.com:2181,nn02.itversity.com:2181,rm01.itversity.com \
+--topic tarab
+
+4) To delete a topic
+
+kafka-topics.sh --delete \
+--zookeeper nn01.itversity.com:2181,nn02.itversity.com:2181,rm01.itversity.com \
+--topic tarab
+
+5) To produce messages to a topic (WRITE)
+
+kafka-console-producer.sh \
+--broker-list wn01.itversity.com:6667,wn02.itversity.com:6667,wn03.itversity.com:6667 \
+--topic tarab
+
+-> THIS IS THE MESSAGE WHICH WILL BE READ BY THE CONSUMER
+
+6) To consume messages from the topic (READ)
+
+kafka-console-consumer.sh \
+  --bootstrap-server wn01.itversity.com:6667,wn02.itversity.com:6667,wn03.itversity.com:6667 \
+  --topic tarab \
+  --from-beginning
+
+OUTPUT:-
+-> THIS IS THE MESSAGE WHICH WILL BE READ BY THE CONSUMER
